@@ -1,79 +1,62 @@
 const http = require('http');
 const { MongoClient } = require('mongodb');
-const fs = require('fs');
 
-const PORT = process.env.PORT || 3001;
-const MONGO_URI = process.env.MONGO_URI;
+const PORT = 3001;
 
-let db = null;
+const user = "YanCarlos";
+const password = encodeURIComponent("@@Krq73g2023@@");
 
-// 🔌 conexión Mongo
-async function connectDB() {
-    if (db) return db;
+const MONGO_URI = `mongodb+srv://${user}:${password}@pokeapibd.crjoj9o.mongodb.net/pokeapiBD?retryWrites=true&w=majority`;
 
-    const client = new MongoClient(MONGO_URI);
-    await client.connect();
+let db;
 
-    db = client.db("pokeapi");
-    console.log("Mongo conectado");
-
-    return db;
-}
+// Conexión
+(async () => {
+    try {
+        const client = new MongoClient(MONGO_URI);
+        await client.connect();
+        db = client.db("pokeapi");
+        console.log("MongoDB conectado");
+    } catch (err) {
+        console.error("Error MongoDB:", err.message);
+    }
+})();
 
 const server = http.createServer(async (req, res) => {
+    const { url, method } = req;
 
-    // ===== CORS =====
+    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') {
+    if (method === 'OPTIONS') {
         res.writeHead(204);
         return res.end();
     }
 
-    // ===== SWAGGER UI =====
-    if (req.url === '/docs') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        return res.end(`
-            <html>
-            <head>
-                <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
-            </head>
-            <body>
-                <div id="swagger-ui"></div>
-                <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-                <script>
-                    SwaggerUIBundle({
-                        url: '/swagger.json',
-                        dom_id: '#swagger-ui'
-                    });
-                </script>
-            </body>
-            </html>
-        `);
-    }
+    // API
+    if (url.startsWith('/api/pokemon/') && method === 'GET') {
+        const name = decodeURIComponent(url.split('/').pop()).toLowerCase().trim();
 
-    // ===== SWAGGER JSON =====
-    if (req.url === '/swagger.json') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return fs.createReadStream('./swagger.json').pipe(res);
-    }
-
-    // ===== API =====
-    if (req.url.startsWith('/api/pokemon/') && req.method === 'GET') {
         try {
-            const database = await connectDB();
+            // Traer todos y buscar manualmente (más seguro)
+            const all = await db.collection('pokemon').find().toArray();
 
-            const name = decodeURIComponent(req.url.split('/').pop());
+            console.log("Buscando:", name);
+            console.log("Total docs:", all.length);
 
-            const pokemon = await database.collection('pokemon').findOne({
-                nombre: { $regex: `^${name}$`, $options: 'i' }
-            });
+            const pokemon = all.find(p =>
+                p.nombre &&
+                p.nombre.toLowerCase().trim() === name
+            );
 
             if (!pokemon) {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({ error: "No encontrado" }));
+                return res.end(JSON.stringify({
+                    error: "No encontrado en MongoDB",
+                    debug: all.map(p => p.nombre)
+                }));
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -81,26 +64,27 @@ const server = http.createServer(async (req, res) => {
                 name: pokemon.nombre,
                 height: pokemon.altura,
                 weight: pokemon.peso,
-                abilities: pokemon.habilidades,
+                abilities: Array.isArray(pokemon.habilidades)
+                    ? pokemon.habilidades
+                    : [pokemon.habilidades],
                 images: {
                     front: pokemon.imagen_frontal,
                     back: pokemon.imagen_trasera
                 },
-                source: "mongo"
+                source: "MongoDB"
             }));
 
         } catch (err) {
-            console.error("ERROR MONGO:", err);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: err.message }));
+            console.error(err);
+            res.writeHead(500);
+            return res.end(err.message);
         }
     }
 
-    // ===== DEFAULT =====
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: "Ruta no encontrada" }));
+    res.writeHead(404);
+    res.end("Not Found");
 });
 
 server.listen(PORT, () => {
-    console.log(`🚀 Mongo API corriendo en puerto ${PORT}`);
+    console.log(`Servidor Mongo activo en http://localhost:${PORT}`);
 });
