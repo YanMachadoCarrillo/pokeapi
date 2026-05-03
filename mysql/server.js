@@ -1,4 +1,5 @@
 const http = require('http');
+const fetch = global.fetch;
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const PORT = process.env.PORT || 3000;
