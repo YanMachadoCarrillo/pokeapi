@@ -2,12 +2,12 @@ const http = require('http');
 
 const PORT = process.env.PORT || 3000;
 
-// 🔐 variables de entorno
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 const server = http.createServer(async (req, res) => {
 
+    //CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -35,7 +35,7 @@ const server = http.createServer(async (req, res) => {
             const data = await response.json();
 
             if (!data.length) {
-                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.writeHead(404);
                 return res.end(JSON.stringify({ error: "No encontrado" }));
             }
 
@@ -55,7 +55,6 @@ const server = http.createServer(async (req, res) => {
             }));
 
         } catch (err) {
-            console.error("ERROR SQL:", err.message);
             res.writeHead(500);
             return res.end(JSON.stringify({ error: err.message }));
         }
@@ -66,5 +65,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`SQL API corriendo en puerto ${PORT}`);
+    console.log("SQL API corriendo");
 });
