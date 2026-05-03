@@ -1,6 +1,7 @@
 const http = require('http');
+const fs = require('fs');
 
-// usar fetch nativo (Node moderno)
+// usar fetch nativo
 const fetch = global.fetch;
 
 const PORT = process.env.PORT || 3000;
@@ -8,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-// Validación (sin tumbar el server)
 if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error("❌ Faltan variables de entorno SUPABASE");
 }
@@ -25,7 +25,35 @@ const server = http.createServer(async (req, res) => {
         return res.end();
     }
 
-    // ===== RUTA =====
+    // ===== SWAGGER UI =====
+    if (req.url === '/docs') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        return res.end(`
+            <html>
+            <head>
+                <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+            </head>
+            <body>
+                <div id="swagger-ui"></div>
+                <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+                <script>
+                    SwaggerUIBundle({
+                        url: '/swagger.json',
+                        dom_id: '#swagger-ui'
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+    }
+
+    // ===== SWAGGER JSON =====
+    if (req.url === '/swagger.json') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return fs.createReadStream('./swagger.json').pipe(res);
+    }
+
+    // ===== API =====
     if (req.url.startsWith('/api/pokemon/') && req.method === 'GET') {
 
         try {
@@ -40,7 +68,6 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: "Nombre requerido" }));
             }
 
-            // 🔥 query flexible
             const url = `${SUPABASE_URL}/pokemon?nombre=ilike.*${name}*`;
 
             console.log("🔍 Buscando:", url);
@@ -89,6 +116,7 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
+    // ===== DEFAULT =====
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: "Ruta no encontrada" }));
 });
