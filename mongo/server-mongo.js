@@ -1,9 +1,9 @@
 const http = require('http');
 const { MongoClient } = require('mongodb');
+console.log("URI RAW:", process.env.MONGO_URI);
 
 const PORT = process.env.PORT || 3001;
-const user = "YanCarlos";
-const password = encodeURIComponent("@@Krq73g2023@@");
+
 const MONGO_URI = process.env.MONGO_URI;
 
 let db = null;
