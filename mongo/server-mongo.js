@@ -2,30 +2,27 @@ const http = require('http');
 const { MongoClient } = require('mongodb');
 
 const PORT = process.env.PORT || 3001;
-
-const user = "YanCarlos";
-const password = encodeURIComponent("@@Krq73g2023@@");
-
-const MONGO_URI = `mongodb+srv://${user}:${password}@pokeapibd.crjoj9o.mongodb.net/pokeapiBD?retryWrites=true&w=majority`;
+const MONGO_URI = process.env.MONGO_URI;
 
 let db;
 
-// Conexión
-(async () => {
-    try {
-        const client = new MongoClient(MONGO_URI);
-        await client.connect();
-        db = client.db("pokeapi");
-        console.log("MongoDB conectado");
-    } catch (err) {
-        console.error("Error MongoDB:", err.message);
-    }
-})();
+// 🔥 conexión segura
+async function connectDB() {
+    if (db) return db;
+
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+
+    db = client.db("pokeapi"); // 👈 importante
+    console.log("Mongo conectado en Render");
+
+    return db;
+}
 
 const server = http.createServer(async (req, res) => {
+
     const { url, method } = req;
 
-    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -35,28 +32,20 @@ const server = http.createServer(async (req, res) => {
         return res.end();
     }
 
-    // API
     if (url.startsWith('/api/pokemon/') && method === 'GET') {
-        const name = decodeURIComponent(url.split('/').pop()).toLowerCase().trim();
 
         try {
-            // Traer todos y buscar manualmente (más seguro)
-            const all = await db.collection('pokemon').find().toArray();
+            const database = await connectDB();
 
-            console.log("Buscando:", name);
-            console.log("Total docs:", all.length);
+            const name = decodeURIComponent(url.split('/').pop()).toLowerCase().trim();
 
-            const pokemon = all.find(p =>
-                p.nombre &&
-                p.nombre.toLowerCase().trim() === name
-            );
+            const pokemon = await database.collection('pokemon').findOne({
+                nombre: name.charAt(0).toUpperCase() + name.slice(1)
+            });
 
             if (!pokemon) {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({
-                    error: "No encontrado en MongoDB",
-                    debug: all.map(p => p.nombre)
-                }));
+                return res.end(JSON.stringify({ error: "No encontrado" }));
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -64,18 +53,15 @@ const server = http.createServer(async (req, res) => {
                 name: pokemon.nombre,
                 height: pokemon.altura,
                 weight: pokemon.peso,
-                abilities: Array.isArray(pokemon.habilidades)
-                    ? pokemon.habilidades
-                    : [pokemon.habilidades],
+                abilities: pokemon.habilidades,
                 images: {
                     front: pokemon.imagen_frontal,
                     back: pokemon.imagen_trasera
-                },
-                source: "MongoDB"
+                }
             }));
 
         } catch (err) {
-            console.error(err);
+            console.error("ERROR SERVER:", err);
             res.writeHead(500);
             return res.end(err.message);
         }
@@ -86,5 +72,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`Servidor Mongo activo en http://localhost:${PORT}`);
+    console.log(`Servidor activo en puerto ${PORT}`);
 });
