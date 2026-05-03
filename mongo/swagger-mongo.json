@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "PokéAPI MongoDB",
+    "version": "1.0.0",
+    "description": "API conectada a MongoDB Atlas para consultar Pokémon"
+  },
+  "servers": [
+    {
+      "url": "https://pokeapi-6r6g.onrender.com"
+    }
+  ],
+  "paths": {
+    "/api/pokemon/{name}": {
+      "get": {
+        "summary": "Buscar Pokémon en MongoDB",
+        "description": "Devuelve información de un Pokémon almacenado en MongoDB Atlas",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "description": "Nombre del Pokémon",
+            "schema": {
+              "type": "string",
+              "example": "pikachu"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pokémon encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "name": "Pikachu",
+                  "height": 0.4,
+                  "weight": 6,
+                  "abilities": [
+                    "Static",
+                    "Lightning Rod"
+                  ],
+                  "images": {
+                    "front": "https://...",
+                    "back": "https://..."
+                  },
+                  "source": "mongo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No encontrado en MongoDB"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error del servidor",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error interno"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
