@@ -5,9 +5,14 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error("Faltan variables de entorno");
+    process.exit(1);
+}
+
 const server = http.createServer(async (req, res) => {
 
-    //CORS
+    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,25 +22,28 @@ const server = http.createServer(async (req, res) => {
         return res.end();
     }
 
+    // ENDPOINT
     if (req.url.startsWith('/api/pokemon/')) {
 
         try {
             const name = decodeURIComponent(req.url.split('/').pop()).toLowerCase();
 
-            const response = await fetch(
-                `${SUPABASE_URL}/pokemon?nombre=ilike.${name}`,
-                {
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`
-                    }
+            // 🔥 BÚSQUEDA FLEXIBLE (ARREGLADA)
+            const url = `${SUPABASE_URL}/pokemon?nombre=ilike.*${name}*`;
+
+            console.log("Buscando:", url);
+
+            const response = await fetch(url, {
+                headers: {
+                    apikey: SUPABASE_KEY,
+                    Authorization: `Bearer ${SUPABASE_KEY}`
                 }
-            );
+            });
 
             const data = await response.json();
 
-            if (!data.length) {
-                res.writeHead(404);
+            if (!data || data.length === 0) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({ error: "No encontrado" }));
             }
 
@@ -46,7 +54,9 @@ const server = http.createServer(async (req, res) => {
                 name: p.nombre,
                 height: p.altura,
                 weight: p.peso,
-                abilities: p.habilidades,
+                abilities: Array.isArray(p.habilidades)
+                    ? p.habilidades
+                    : JSON.parse(p.habilidades || "[]"),
                 images: {
                     front: p.imagen_frontal,
                     back: p.imagen_trasera
@@ -55,6 +65,7 @@ const server = http.createServer(async (req, res) => {
             }));
 
         } catch (err) {
+            console.error("ERROR SQL:", err);
             res.writeHead(500);
             return res.end(JSON.stringify({ error: err.message }));
         }
@@ -65,5 +76,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log("SQL API corriendo");
+    console.log("🚀 SQL API funcionando en puerto", PORT);
 });
