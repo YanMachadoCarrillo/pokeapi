@@ -1,6 +1,7 @@
 const http = require('http');
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI;
@@ -10,6 +11,10 @@ let db = null;
 // 🔌 conexión Mongo
 async function connectDB() {
     if (db) return db;
+
+    if (!MONGO_URI) {
+        throw new Error("MONGO_URI no está definida");
+    }
 
     const client = new MongoClient(MONGO_URI);
     await client.connect();
@@ -54,10 +59,25 @@ const server = http.createServer(async (req, res) => {
         `);
     }
 
-    // ===== SWAGGER JSON =====
+    // ===== SWAGGER JSON (CORREGIDO) =====
     if (req.url === '/swagger.json') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return fs.createReadStream('./swagger.json').pipe(res);
+        try {
+            const filePath = path.join(__dirname, 'swagger.json');
+
+            if (!fs.existsSync(filePath)) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({
+                    error: "swagger.json no encontrado en el servidor"
+                }));
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return fs.createReadStream(filePath).pipe(res);
+
+        } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: err.message }));
+        }
     }
 
     // ===== API =====
@@ -65,7 +85,12 @@ const server = http.createServer(async (req, res) => {
         try {
             const database = await connectDB();
 
-            const name = decodeURIComponent(req.url.split('/').pop());
+            const name = decodeURIComponent(req.url.split('/').pop()).trim();
+
+            if (!name) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: "Nombre requerido" }));
+            }
 
             const pokemon = await database.collection('pokemon').findOne({
                 nombre: { $regex: `^${name}$`, $options: 'i' }
@@ -90,7 +115,7 @@ const server = http.createServer(async (req, res) => {
             }));
 
         } catch (err) {
-            console.error("ERROR MONGO:", err);
+            console.error("ERROR MONGO:", err.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ error: err.message }));
         }
