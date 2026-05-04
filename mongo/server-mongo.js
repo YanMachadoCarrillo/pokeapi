@@ -59,22 +59,25 @@ const server = http.createServer(async (req, res) => {
         `);
     }
 
-    // ===== SWAGGER JSON (CORREGIDO) =====
+    // ===== SWAGGER JSON (USANDO TU ARCHIVO REAL) =====
     if (req.url === '/swagger.json') {
         try {
-            const filePath = path.join(__dirname, 'swagger.json');
+            const filePath = path.join(__dirname, 'swagger-mongo.json');
+
+            console.log("📄 Swagger path:", filePath);
 
             if (!fs.existsSync(filePath)) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({
-                    error: "swagger.json no encontrado en el servidor"
-                }));
+                throw new Error("swagger-mongo.json no existe");
             }
 
+            const data = fs.readFileSync(filePath, 'utf8');
+
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            return fs.createReadStream(filePath).pipe(res);
+            return res.end(data);
 
         } catch (err) {
+            console.error("❌ ERROR SWAGGER:", err.message);
+
             res.writeHead(500, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ error: err.message }));
         }
