@@ -43,7 +43,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "error": "No encontrado en MongoDB"
+                  "error": "No encontrado"
                 }
               }
             }
@@ -66,6 +66,7 @@
     "schemas": {
       "Pokemon": {
         "type": "object",
+        "required": ["name", "height", "weight", "abilities", "images", "source"],
         "properties": {
           "name": {
             "type": "string",
@@ -91,11 +92,13 @@
             "properties": {
               "front": {
                 "type": "string",
-                "example": "https://..."
+                "format": "uri",
+                "example": "https://pokeapi.co/media/sprites/pokemon/25.png"
               },
               "back": {
                 "type": "string",
-                "example": "https://..."
+                "format": "uri",
+                "example": "https://pokeapi.co/media/sprites/pokemon/back/25.png"
               }
             }
           },
